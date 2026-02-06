@@ -1,0 +1,50 @@
+# =========================================
+# Anonymous Bot v3.0 - Docker Compose
+# =========================================
+
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anon_bot
+    restart: unless-stopped
+
+    # Environment variables
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - COMMAND_PREFIX=${COMMAND_PREFIX:-@anon}
+      - QUEUE_TIMEOUT=${QUEUE_TIMEOUT:-60}
+      - ERROR_NOTIFICATIONS=${ERROR_NOTIFICATIONS:-true}
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+    # Networking
+    networks:
+      - bot_network
+
+networks:
+  bot_network:
+    driver: bridge
