@@ -4,6 +4,7 @@ Message Handler
 
 Main handler for processing incoming messages.
 Implements both direct and delayed anonymization modes.
+Privacy-focused: no user identifiers logged.
 """
 
 import logging
@@ -115,10 +116,7 @@ async def handle_anon_command(message: Message) -> None:
 
     if has_text or has_media:
         # MODE 1: Direct anonymization
-        logger.info(
-            "Direct anon: user=%d chat=%d",
-            message.from_user.id, message.chat.id
-        )
+        logger.debug("Processing direct anonymization")
 
         # Delete original first
         deleted = await message_processor.delete_original(message)
@@ -133,10 +131,7 @@ async def handle_anon_command(message: Message) -> None:
         )
     else:
         # MODE 2: Add to queue for delayed anonymization
-        logger.info(
-            "Queued for delayed anon: user=%d chat=%d",
-            message.from_user.id, message.chat.id
-        )
+        logger.debug("Queuing for delayed anonymization")
 
         # Get reply_to if this @anon was replying to something
         reply_to = (
@@ -197,10 +192,7 @@ async def handle_queued_message(message: Message) -> None:
     if not entry:
         return  # Expired or already processed
 
-    logger.info(
-        "Processing queued message: user=%d chat=%d",
-        message.from_user.id, message.chat.id
-    )
+    logger.debug("Processing queued message")
 
     # Delete original
     deleted = await message_processor.delete_original(message)

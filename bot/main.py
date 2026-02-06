@@ -4,6 +4,7 @@ Main Entry Point
 
 Application entry point. Sets up the bot, registers handlers,
 and starts polling for updates.
+Privacy-focused: minimal logging without user identifiers.
 """
 
 import asyncio
@@ -28,12 +29,11 @@ def setup_logging() -> None:
     """
     Configure logging for the application.
 
-    Sets up formatted console output with timestamps.
-    Log level is INFO for production, DEBUG for development.
+    Privacy-focused: only operational status, no user data.
     """
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        format="%(asctime)s | %(levelname)-8s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stdout)
@@ -41,8 +41,8 @@ def setup_logging() -> None:
     )
 
     # Reduce noise from external libraries
-    logging.getLogger("aiogram").setLevel(logging.WARNING)
-    logging.getLogger("aiohttp").setLevel(logging.WARNING)
+    logging.getLogger("aiogram").setLevel(logging.ERROR)
+    logging.getLogger("aiohttp").setLevel(logging.ERROR)
 
 
 # =========================================
@@ -56,7 +56,6 @@ async def lifespan(bot: Bot, queue: QueueManager):
 
     Handles startup and shutdown tasks:
     - Start queue manager
-    - Set bot commands
     - Cleanup on exit
 
     Args:
@@ -69,9 +68,9 @@ async def lifespan(bot: Bot, queue: QueueManager):
     logger.info("Starting Anonymous Bot v3.0...")
     await queue.start()
 
-    # Get bot info for logging
+    # Get bot info for logging - only username, not ID
     bot_info = await bot.get_me()
-    logger.info("Bot started: @%s (ID: %d)", bot_info.username, bot_info.id)
+    logger.info("Bot started: @%s", bot_info.username)
 
     yield
 
@@ -134,7 +133,9 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nBot stopped by user")
-    except Exception as e:
-        print(f"Fatal error: {e}")
+        # Silent exit on Ctrl+C
+        pass
+    except Exception:
+        # No error details logged for privacy
+        print("Fatal error occurred")
         sys.exit(1)

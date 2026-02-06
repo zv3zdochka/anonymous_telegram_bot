@@ -3,7 +3,7 @@ Message Processor
 =================
 
 Handles the actual sending of anonymized messages.
-Supports all Telegram media types with proper error handling.
+Privacy-focused: no user/chat identifiers in logs.
 """
 
 import logging
@@ -20,12 +20,11 @@ class MessageProcessor:
     """
     Processes and sends anonymized messages.
 
-    Handles all supported media types and preserves
-    reply chains where applicable.
-
-    Attributes:
-        bot: Aiogram Bot instance
-        error_notifications: Whether to send error messages
+    Privacy guarantees:
+    - No user IDs logged
+    - No chat IDs logged
+    - No message content logged
+    - Only generic operation status
     """
 
     # Error messages for different failure scenarios
@@ -75,10 +74,8 @@ class MessageProcessor:
 
         try:
             msg_type = get_message_type(message)
-            logger.info(
-                "Processing %s message in chat %d",
-                msg_type, chat_id
-            )
+            # Log only message type, no identifiers
+            logger.debug("Processing %s message", msg_type)
 
             # Route to appropriate handler
             handlers = {
@@ -101,8 +98,8 @@ class MessageProcessor:
                 logger.warning("Unsupported message type: %s", msg_type)
                 return False
 
-        except TelegramAPIError as e:
-            logger.error("Telegram API error: %s", e)
+        except TelegramAPIError:
+            logger.error("Telegram API error occurred")
             if self.error_notifications:
                 await self._send_error(chat_id, "unknown")
             return False
@@ -119,17 +116,11 @@ class MessageProcessor:
         """
         try:
             await message.delete()
-            logger.debug(
-                "Deleted message %d in chat %d",
-                message.message_id, message.chat.id
-            )
+            logger.debug("Message deleted successfully")
             return True
 
         except TelegramForbiddenError:
-            logger.warning(
-                "No permission to delete in chat %d",
-                message.chat.id
-            )
+            logger.warning("No permission to delete message")
             if self.error_notifications:
                 await self._send_error(message.chat.id, "delete_failed")
             return False
@@ -142,7 +133,7 @@ class MessageProcessor:
                 if self.error_notifications:
                     await self._send_error(message.chat.id, "too_old")
                 return False
-            logger.error("Delete error: %s", e)
+            logger.error("Delete error occurred")
             return False
 
     # =========================================

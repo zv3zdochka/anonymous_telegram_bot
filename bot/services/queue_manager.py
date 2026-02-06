@@ -3,7 +3,7 @@ Queue Manager
 =============
 
 Manages the pending anonymization queue for delayed mode.
-Supports both in-memory and Redis-based storage.
+Privacy-focused: no user identifiers in logs.
 """
 
 import asyncio
@@ -20,11 +20,8 @@ class QueueEntry:
     """
     Represents a pending anonymization request.
 
-    Attributes:
-        user_id: Telegram user ID
-        chat_id: Chat where request was made
-        expires_at: When this entry becomes invalid
-        reply_to_message_id: Optional message ID to reply to
+    Note: This data is kept only in memory and auto-expires.
+    Nothing is persisted to disk or external storage.
     """
     user_id: int
     chat_id: int
@@ -36,13 +33,10 @@ class QueueManager:
     """
     Thread-safe queue manager for delayed anonymization.
 
-    Uses composite key (chat_id, user_id) to allow same user
-    to have pending requests in different chats.
-
-    Attributes:
-        timeout: Seconds before queue entry expires
-        _queue: Internal storage dict
-        _cleanup_task: Background cleanup task
+    Privacy guarantees:
+    - All data is in-memory only (no persistence)
+    - Entries auto-expire after timeout
+    - No user identifiers are logged
     """
 
     def __init__(self, timeout: int = 60):
@@ -100,10 +94,8 @@ class QueueManager:
                 reply_to_message_id=reply_to_message_id
             )
 
-        logger.debug(
-            "Added to queue: user=%d chat=%d expires=%s",
-            user_id, chat_id, expires_at.isoformat()
-        )
+        # No logging of user/chat IDs for privacy
+        logger.debug("Entry added to queue")
 
     async def pop(self, user_id: int, chat_id: int) -> QueueEntry | None:
         """
@@ -122,7 +114,7 @@ class QueueManager:
             entry = self._queue.pop(key, None)
 
         if entry and entry.expires_at > datetime.now():
-            logger.debug("Popped from queue: user=%d chat=%d", user_id, chat_id)
+            logger.debug("Entry popped from queue")
             return entry
 
         return None
@@ -158,8 +150,9 @@ class QueueManager:
                 await self._cleanup_expired()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.error("Cleanup error: %s", e)
+            except Exception:
+                # Silent error handling - no details logged
+                logger.error("Cleanup error occurred")
 
     async def _cleanup_expired(self) -> None:
         """Remove all expired entries from queue."""
